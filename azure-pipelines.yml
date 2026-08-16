@@ -5,8 +5,7 @@ trigger:
 
 pool:
   vmImage: 'ubuntu-latest'
-  demands:
-    - Agent.Version -geVersion 2.180.0
+  demands: []
 
 stages:
   - stage: Build
