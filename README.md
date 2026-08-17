@@ -5,9 +5,9 @@ promotion (dev → staging → prod), least-privilege service connections,
 and Key Vault-backed secret management via Managed Identity — the pattern
 described, not just claimed.
 
-> **Status: in progress.** Build and test stage is live. Dev/staging/prod
-> deployment stages, approval gates, rollback, and observability are being
-> added next — see [Roadmap](#roadmap).
+> **Status: in progress.** Build and Dev deployment stages are live.
+> Staging/prod deployment, approval gates, rollback, and observability are
+> being added next — see [Roadmap](#roadmap).
 
 ## Why this project
 
@@ -42,7 +42,7 @@ azure-devops-multienv-pipeline/
 │   └── requirements.txt
 ├── docs/
 │   └── azure-devops-setup.md   # service connections, RBAC, Key Vault setup
-├── azure-pipelines.yml     # currently: Build and Test stage only
+├── azure-pipelines.yml     # currently: Build, DeployDev stages
 └── .gitignore
 ```
 
@@ -67,7 +67,7 @@ steps, including the exact `az` commands and the RBAC reasoning, are in
 
 ## Pipeline
 
-`azure-pipelines.yml` currently runs a single stage on every push to `main`:
+`azure-pipelines.yml` currently runs two stages on every push to `main`:
 
 **`Build`**
 1. Sets up Python 3.12
@@ -78,13 +78,17 @@ steps, including the exact `az` commands and the RBAC reasoning, are in
    stages consume the exact code that was tested — not a fresh checkout
    that could drift
 
-Deploy stages (dev, staging with approval, prod with approval + rollback)
-are not yet added — see Roadmap.
+**`DeployDev`** — runs automatically after a successful build, no approval required
+1. Authenticates via the `sc-dev` service connection (Workload Identity federation)
+2. Fetches the `AppInsightsKey` secret from `kv-app-dev-rs01` via Azure CLI
+3. Marks the fetched value as a secret pipeline variable (`issecret=true`), so it's masked in logs even where referenced
+4. Deploys using the artifact published by `Build` — not a fresh checkout, so what's deployed is exactly what was tested
+
+Staging (with approval) and Prod (with approval + rollback) are not yet
+added — see Roadmap.
 
 ## Roadmap
 
-- [ ] Add automated Dev deployment stage (Key Vault secret fetch via
-      Managed Identity)
 - [ ] Add Staging deployment stage with a manual approval gate
 - [ ] Add Prod deployment stage with a manual approval gate and a
       documented rollback strategy
@@ -105,3 +109,8 @@ are not yet added — see Roadmap.
   "Create Pipeline → connect to GitHub repo" step had never been run.
   These are separate setup steps in Azure DevOps and neither implies the
   other.
+- **`DeployDev` job failed: "Environment dev could not be found"** — Azure
+  DevOps Environments must be created manually in advance; they are not
+  auto-created the first time a `deployment` job references one. Fixed by
+  creating the `dev` environment via Pipelines → Environments before
+  re-running.
