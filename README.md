@@ -87,9 +87,14 @@ steps, including the exact `az` commands and the RBAC reasoning, are in
 Staging (with approval) and Prod (with approval + rollback) are not yet
 added — see Roadmap.
 
-## Roadmap
+**`DeployStaging`** — requires manual approval before running
+1. Pipeline pauses after `DeployDev` succeeds, waiting for an approver
+   (configured via Environments → staging → Approvals and checks)
+2. Once approved, authenticates via `sc-staging`, fetches `AppInsightsKey`
+   from the staging Key Vault, and deploys the same artifact `Build`
+   published — no rebuild between environments
 
-- [ ] Add Staging deployment stage with a manual approval gate
+## Roadmap
 - [ ] Add Prod deployment stage with a manual approval gate and a
       documented rollback strategy
 - [ ] Wire up Application Insights telemetry and a basic Azure Monitor
@@ -114,3 +119,9 @@ added — see Roadmap.
   auto-created the first time a `deployment` job references one. Fixed by
   creating the `dev` environment via Pipelines → Environments before
   re-running.
+- **`DeployStaging` paused with "This pipeline needs permission to access
+  a resource"** — distinct from the approval check configured on the
+  environment. Azure DevOps requires a one-time authorization the first
+  time a pipeline references a given Environment, separate from the
+  per-run approval gate. Resolved by clicking View → Permit; the approval
+  prompt then appeared as expected.
