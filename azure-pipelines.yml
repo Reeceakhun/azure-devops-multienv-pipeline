@@ -100,3 +100,49 @@ stages:
                     echo "Using secret (masked): $(AppInsightsKey)"
                     echo "ENVIRONMENT=staging" > $(Pipeline.Workspace)/app-package/.env
                   displayName: 'Deploy app'
+  
+
+  - stage: DeployProd
+    displayName: 'Deploy to Prod'
+    dependsOn: DeployStaging
+    condition: succeeded()
+    jobs:
+      - deployment: DeployProd
+        environment: 'prod'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Fetch secret from Key Vault'
+                  inputs:
+                    azureSubscription: 'sc-prod'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      SECRET=$(az keyvault secret show --vault-name kv-app-prod --name AppInsightsKey --query value -o tsv)
+                      echo "##vso[task.setvariable variable=AppInsightsKey;issecret=true]$SECRET"
+
+                - script: |
+                    echo "Deploying to Prod environment"
+                    echo "Using secret (masked): $(AppInsightsKey)"
+                    echo "ENVIRONMENT=prod" > $(Pipeline.Workspace)/app-package/.env
+                    # Record this deployment as the new 'last known good' marker
+                    echo "$(Build.BuildId)" > $(Pipeline.Workspace)/app-package/last-good-build.txt
+                  displayName: 'Deploy app'
+              on:
+                failure:
+                  steps:
+                    - task: AzureCLI@2
+                      displayName: 'Rollback: redeploy last known-good build'
+                      inputs:
+                        azureSubscription: 'sc-prod'
+                        scriptType: bash
+                        scriptLocation: inlineScript
+                        inlineScript: |
+                          echo "Prod deployment failed — rolling back to last known-good build"
+                          echo "In a real deployment target, this step would re-run the deploy"
+                          echo "commands against the artifact tagged as last-good-build.txt,"
+                          echo "rather than leaving Prod on a broken release."
