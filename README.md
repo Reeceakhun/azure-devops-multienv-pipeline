@@ -23,6 +23,39 @@ up in real multi-environment operations:
 - **Secret management via Key Vault + Managed Identity** — no secrets
   stored as pipeline variables or in source control
 
+
+## What this demonstrates
+
+| Claim | Where it's proven |
+|---|---|
+| Environment promotion frameworks, rollback strategies, quality gates | `azure-pipelines.yml` — Dev → Staging → Prod with approval gates, rollback trigger on Prod failure |
+| RBAC, least privilege | Three service connections, each scoped to a single resource group (`docs/azure-devops-setup.md`) |
+| Key Vault, Managed Identities | Every environment's secret fetched via Workload-Identity-federated service connection, never stored as a pipeline variable |
+| Azure Monitor, Application Insights, cost-aware observability | `## Observability` — per-environment telemetry, zero-request alert rule |
+| Root cause analysis on real findings | `reece-project`'s README documents a genuine IAM misconfiguration found on review, not a hypothetical |
+
+
+## Environment promotion flow
+
+​```mermaid
+graph LR
+  A[Push to main] --> B[Build & Test]
+  B --> C[Deploy: Dev]
+  C -->|manual approval| D[Deploy: Staging]
+  D -->|manual approval| E[Deploy: Prod]
+  E -->|on failure| F[Rollback trigger]
+  B -.-> G[Key Vault: per-env secrets]
+  C -.-> G
+  D -.-> G
+  E -.-> G
+  E --> H[Application Insights]
+  H --> I[Azure Monitor alert]
+​```
+
+Same artifact from `Build` is promoted through Dev → Staging → Prod
+without being rebuilt at any stage — each stage only fetches its own
+environment's secret and deploys.
+
 ## Stack
 
 - **App:** Python 3.12 / Flask
@@ -126,9 +159,6 @@ prod app receives zero requests in a 15-minute window — a simple signal
 for "this deployment silently died," which is exactly the kind of gap
 uptime monitoring alone doesn't catch.
 
-
-## Roadmap
-- [ ] Write up environment promotion flow and RBAC design decisions in full
 
 ## Notes / issues hit along the way
 - **Deploy a real hosting target** (Azure App Service or a container) for
