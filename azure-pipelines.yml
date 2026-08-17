@@ -70,3 +70,33 @@ stages:
                     echo "Using secret (masked): $(AppInsightsKey)"
                     echo "ENVIRONMENT=dev" > $(Pipeline.Workspace)/app-package/.env
                   displayName: 'Deploy app'
+  
+
+  - stage: DeployStaging
+    displayName: 'Deploy to Staging'
+    dependsOn: DeployDev
+    condition: succeeded()
+    jobs:
+      - deployment: DeployStaging
+        environment: 'staging'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Fetch secret from Key Vault'
+                  inputs:
+                    azureSubscription: 'sc-staging'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      SECRET=$(az keyvault secret show --vault-name kv-app-staging --name AppInsightsKey --query value -o tsv)
+                      echo "##vso[task.setvariable variable=AppInsightsKey;issecret=true]$SECRET"
+
+                - script: |
+                    echo "Deploying to Staging environment"
+                    echo "Using secret (masked): $(AppInsightsKey)"
+                    echo "ENVIRONMENT=staging" > $(Pipeline.Workspace)/app-package/.env
+                  displayName: 'Deploy app'
