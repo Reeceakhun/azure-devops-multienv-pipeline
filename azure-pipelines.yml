@@ -71,8 +71,8 @@ stages:
 
                 - script: |
                     echo "Deploying to Dev environment"
-                    echo "Using secret (masked): $(AppInsightsKey)"
                     echo "ENVIRONMENT=dev" > $(Pipeline.Workspace)/app-package/.env
+                    echo "APPINSIGHTS_KEY=$(AppInsightsKey)" >> $(Pipeline.Workspace)/app-package/.env
                   displayName: 'Deploy app'
   
 
@@ -101,8 +101,8 @@ stages:
 
                 - script: |
                     echo "Deploying to Staging environment"
-                    echo "Using secret (masked): $(AppInsightsKey)"
                     echo "ENVIRONMENT=staging" > $(Pipeline.Workspace)/app-package/.env
+                    echo "APPINSIGHTS_KEY=$(AppInsightsKey)" >> $(Pipeline.Workspace)/app-package/.env
                   displayName: 'Deploy app'
   
 
@@ -131,8 +131,8 @@ stages:
 
                 - script: |
                     echo "Deploying to Prod environment"
-                    echo "Using secret (masked): $(AppInsightsKey)"
                     echo "ENVIRONMENT=prod" > $(Pipeline.Workspace)/app-package/.env
+                    echo "APPINSIGHTS_KEY=$(AppInsightsKey)" >> $(Pipeline.Workspace)/app-package/.env
                     # Record this deployment as the new 'last known good' marker
                     echo "$(Build.BuildId)" > $(Pipeline.Workspace)/app-package/last-good-build.txt
                   displayName: 'Deploy app'
