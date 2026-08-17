@@ -94,9 +94,21 @@ added — see Roadmap.
    from the staging Key Vault, and deploys the same artifact `Build`
    published — no rebuild between environments
 
+   **`DeployProd`** — requires manual approval before running
+1. Pipeline pauses after `DeployStaging` succeeds, waiting for approval
+   on the `prod` environment
+2. Once approved, authenticates via `sc-prod`, fetches `AppInsightsKey`
+   from the prod Key Vault, and deploys the same tested artifact
+3. Records the current build ID as the "last known-good" marker
+4. **Rollback:** if the deploy step fails, an `on: failure` block runs
+   automatically, intended to redeploy the last known-good build rather
+   than leaving Prod on a broken release. In this demo (no persistent
+   hosting target — see Dev/Staging notes above) the rollback step
+   demonstrates the trigger mechanism rather than a full redeploy against
+   a live service; in production it would call the same deploy task
+   against the last tagged artifact.
+
 ## Roadmap
-- [ ] Add Prod deployment stage with a manual approval gate and a
-      documented rollback strategy
 - [ ] Wire up Application Insights telemetry and a basic Azure Monitor
       alert rule
 - [ ] Write up environment promotion flow and RBAC design decisions in full
