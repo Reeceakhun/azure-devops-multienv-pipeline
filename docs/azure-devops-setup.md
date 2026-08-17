@@ -105,3 +105,48 @@ Service connections → click the connection → Manage service principal**
 access policies or delete the vault itself — far more than a deployment
 pipeline should ever need. `Key Vault Secrets User` can only *read* secret
 values, which is the entire scope of what a deployment actually requires.
+
+## 7. Create Application Insights per environment
+
+```bash
+az monitor app-insights component create \
+  --app appinsights-dev --location eastus --resource-group rg-app-dev \
+  --application-type web
+
+az monitor app-insights component create \
+  --app appinsights-staging --location eastus --resource-group rg-app-staging \
+  --application-type web
+
+az monitor app-insights component create \
+  --app appinsights-prod --location eastus --resource-group rg-app-prod \
+  --application-type web
+```
+
+## 8. Replace the placeholder Key Vault secret with the real instrumentation key
+
+```bash
+KEY=$(az monitor app-insights component show --app appinsights-dev --resource-group rg-app-dev --query instrumentationKey -o tsv)
+az keyvault secret set --vault-name kv-app-dev-rs01 --name AppInsightsKey --value "$KEY"
+```
+
+Repeat for staging and prod, using each environment's own Application
+Insights resource and its own Key Vault. This overwrites the
+`placeholder-dev`/`placeholder-staging`/`placeholder-prod` values seeded
+earlier — same secret name, same access pattern, so nothing else in the
+pipeline needs to change to pick up the real key.
+
+## 9. Add an Azure Monitor alert rule
+
+```bash
+az monitor metrics alert create \
+  --name "no-requests-alert-prod" \
+  --resource-group rg-app-prod \
+  --scopes $(az monitor app-insights component show --app appinsights-prod --resource-group rg-app-prod --query id -o tsv) \
+  --condition "count requests/count < 1" \
+  --window-size 15m \
+  --evaluation-frequency 5m \
+  --description "Alerts if the app receives zero requests in 15 minutes — likely indicates a dead deployment"
+```
+
+Scoped to prod only for this demo — the same pattern extends to dev/staging
+by repeating against their own Application Insights resource IDs.

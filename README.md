@@ -108,13 +108,34 @@ added — see Roadmap.
    a live service; in production it would call the same deploy task
    against the last tagged artifact.
 
+## Observability
+
+Each environment has its own Application Insights resource
+(`appinsights-dev`, `appinsights-staging`, `appinsights-prod`), with its
+instrumentation key stored in that environment's Key Vault — the same
+secret slot (`AppInsightsKey`) seeded with a placeholder back in the Key
+Vault setup step, now holding the real key.
+
+The Flask app sends two custom events, `HealthCheckHit` and `IndexHit`,
+whenever `/health` or `/` is called and an instrumentation key is present
+(`app/main.py`). Locally, with no key set, telemetry is a no-op — the app
+runs identically, it just doesn't send anything.
+
+A basic Azure Monitor alert rule (`no-requests-alert-prod`) fires if the
+prod app receives zero requests in a 15-minute window — a simple signal
+for "this deployment silently died," which is exactly the kind of gap
+uptime monitoring alone doesn't catch.
+
+
 ## Roadmap
-- [ ] Wire up Application Insights telemetry and a basic Azure Monitor
-      alert rule
 - [ ] Write up environment promotion flow and RBAC design decisions in full
 
 ## Notes / issues hit along the way
-
+- **Deploy a real hosting target** (Azure App Service or a container) for
+  each environment, so `DeployDev`/`DeployStaging`/`DeployProd` actually
+  run the app somewhere reachable — currently they demonstrate the
+  pipeline mechanics (secret retrieval, environment gating) without a live
+  endpoint to hit
 - **Key Vault created, but even the account that created it got
   `ForbiddenByRbac` when setting a secret** — the vault uses RBAC
   authorization mode, which requires an explicit role assignment even for
